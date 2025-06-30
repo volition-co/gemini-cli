@@ -131,6 +131,7 @@ export interface ConfigParameters {
   model: string;
   extensionContextFilePaths?: string[];
   jsonOutput?: boolean;
+  continueFromCheckpoint?: string;
 }
 
 export class Config {
@@ -172,6 +173,7 @@ export class Config {
   private modelSwitchedDuringSession: boolean = false;
   flashFallbackHandler?: FlashFallbackHandler;
   private readonly jsonOutput: boolean;
+  private readonly continueFromCheckpoint: string | undefined;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -214,6 +216,7 @@ export class Config {
     this.model = params.model;
     this.extensionContextFilePaths = params.extensionContextFilePaths ?? [];
     this.jsonOutput = params.jsonOutput ?? false;
+    this.continueFromCheckpoint = params.continueFromCheckpoint;
 
     if (params.contextFileName) {
       setGeminiMdFilename(params.contextFileName);
@@ -458,6 +461,10 @@ export class Config {
 
   getJsonOutput(): boolean {
     return this.jsonOutput;
+  }
+
+  getContinueFromCheckpoint(): string | undefined {
+    return this.continueFromCheckpoint;
   }
 }
 

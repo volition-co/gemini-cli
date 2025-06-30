@@ -54,6 +54,7 @@ interface CliArgs {
   telemetryOtlpEndpoint: string | undefined;
   telemetryLogPrompts: boolean | undefined;
   json: boolean | undefined;
+  continue: string | undefined;
 }
 
 async function parseArguments(): Promise<CliArgs> {
@@ -133,6 +134,10 @@ async function parseArguments(): Promise<CliArgs> {
       type: 'boolean',
       description: 'Output tool calls and responses in JSON format',
       default: false,
+    })
+    .option('continue', {
+      type: 'string',
+      description: 'Continue from a saved checkpoint tag',
     })
     .version(await getCliVersion()) // This will enable the --version flag based on package.json
     .alias('v', 'version')
@@ -253,6 +258,7 @@ export async function loadCliConfig(
     model: argv.model!,
     extensionContextFilePaths,
     jsonOutput: argv.json || false,
+    continueFromCheckpoint: argv.continue,
   });
 }
 

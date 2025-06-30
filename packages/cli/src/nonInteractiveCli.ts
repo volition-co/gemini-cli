@@ -11,6 +11,7 @@ import {
   ToolRegistry,
   shutdownTelemetry,
   isTelemetrySdkInitialized,
+  Logger,
 } from '@google/gemini-cli-core';
 import {
   Content,
@@ -61,6 +62,48 @@ export async function runNonInteractive(
 
   const chat = await geminiClient.getChat();
   const abortController = new AbortController();
+  
+  // Initialize logger for checkpoint saving
+  const logger = new Logger(config.getSessionId());
+  await logger.initialize();
+  
+  // Load from checkpoint if specified
+  const continueTag = config.getContinueFromCheckpoint();
+  if (continueTag) {
+    const conversation = await logger.loadCheckpoint(continueTag);
+    if (conversation.length === 0) {
+      const errorMsg = `No saved checkpoint found with tag: ${continueTag}`;
+      if (isJsonOutput) {
+        console.log(
+          JSON.stringify({
+            type: 'error',
+            message: errorMsg,
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      } else {
+        console.error(errorMsg);
+      }
+      process.exit(1);
+    }
+    
+    // Restore the conversation history
+    chat.clearHistory();
+    for (const item of conversation) {
+      chat.addHistory(item);
+    }
+    
+    if (isJsonOutput) {
+      console.log(
+        JSON.stringify({
+          type: 'checkpoint_loaded',
+          tag: continueTag,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    }
+  }
+  
   let currentMessages: Content[] = [{ role: 'user', parts: [{ text: input }] }];
 
   try {
@@ -126,7 +169,7 @@ export async function runNonInteractive(
                 type: 'tool_call',
                 name: fc.name,
                 args: fc.args,
-                callId: callId,
+                callId,
                 timestamp: new Date().toISOString(),
               }),
             );
@@ -148,7 +191,7 @@ export async function runNonInteractive(
                 JSON.stringify({
                   type: 'tool_response',
                   name: fc.name,
-                  callId: callId,
+                  callId,
                   error: true,
                   message:
                     toolResponse.resultDisplay || toolResponse.error.message,
@@ -169,7 +212,7 @@ export async function runNonInteractive(
               JSON.stringify({
                 type: 'tool_response',
                 name: fc.name,
-                callId: callId,
+                callId,
                 success: true,
                 result: toolResponse.resultDisplay || '',
                 timestamp: new Date().toISOString(),
@@ -195,6 +238,9 @@ export async function runNonInteractive(
         if (!isJsonOutput) {
           process.stdout.write('\n'); // Ensure a final newline
         }
+        
+        // Save checkpoint before exiting
+        await saveCheckpointAndOutput(chat, logger, isJsonOutput);
         return;
       }
     }
@@ -205,10 +251,44 @@ export async function runNonInteractive(
         config.getContentGeneratorConfig().authType,
       ),
     );
+    
+    // Save checkpoint even on error
+    await saveCheckpointAndOutput(chat, logger, isJsonOutput);
     process.exit(1);
   } finally {
     if (isTelemetrySdkInitialized()) {
       await shutdownTelemetry();
+    }
+  }
+}
+
+async function saveCheckpointAndOutput(
+  chat: { getHistory: () => Content[] },
+  logger: Logger,
+  isJsonOutput: boolean
+): Promise<void> {
+  try {
+    const history = chat.getHistory();
+    if (history.length > 0) {
+      // Generate a unique tag based on timestamp
+      const tag = `auto-${Date.now()}`;
+      await logger.saveCheckpoint(history, tag);
+      
+      // Output checkpoint info in JSON format
+      if (isJsonOutput) {
+        console.log(
+          JSON.stringify({
+            type: 'checkpoint',
+            tag,
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      }
+    }
+  } catch (error) {
+    // Log error but don't fail the process
+    if (!isJsonOutput) {
+      console.error('Failed to save checkpoint:', error);
     }
   }
 }
