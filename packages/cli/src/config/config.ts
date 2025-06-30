@@ -67,6 +67,7 @@ export interface CliArgs {
   proxy: string | undefined;
   includeDirectories: string[] | undefined;
   json: boolean | undefined;
+  continue: string | undefined;
 }
 
 export async function parseArguments(): Promise<CliArgs> {
@@ -218,6 +219,10 @@ export async function parseArguments(): Promise<CliArgs> {
       type: 'boolean',
       description: 'Output tool calls and responses in JSON format',
       default: false,
+    })
+    .option('continue', {
+      type: 'string',
+      description: 'Continue from a saved checkpoint tag',
     })
     .version(await getCliVersion()) // This will enable the --version flag based on package.json
     .alias('v', 'version')
@@ -463,6 +468,7 @@ export async function loadCliConfig(
     ideModeFeature,
     ideClient,
     jsonOutput: argv.json || false,
+    continueFromCheckpoint: argv.continue,
   });
 }
 
