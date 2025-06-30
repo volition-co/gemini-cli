@@ -57,6 +57,7 @@ export async function runNonInteractive(
 
   const geminiClient = config.getGeminiClient();
   const toolRegistry: ToolRegistry = await config.getToolRegistry();
+  const isJsonOutput = config.getJsonOutput();
 
   const chat = await geminiClient.getChat();
   const abortController = new AbortController();
@@ -76,6 +77,7 @@ export async function runNonInteractive(
         },
       });
 
+      let responseText = '';
       for await (const resp of responseStream) {
         if (abortController.signal.aborted) {
           console.error('Operation cancelled.');
@@ -83,11 +85,26 @@ export async function runNonInteractive(
         }
         const textPart = getResponseText(resp);
         if (textPart) {
-          process.stdout.write(textPart);
+          if (isJsonOutput) {
+            responseText += textPart;
+          } else {
+            process.stdout.write(textPart);
+          }
         }
         if (resp.functionCalls) {
           functionCalls.push(...resp.functionCalls);
         }
+      }
+
+      // Output assistant response in JSON format if enabled
+      if (isJsonOutput && responseText) {
+        console.log(
+          JSON.stringify({
+            type: 'assistant',
+            content: responseText,
+            timestamp: new Date().toISOString(),
+          }),
+        );
       }
 
       if (functionCalls.length > 0) {
@@ -102,6 +119,19 @@ export async function runNonInteractive(
             isClientInitiated: false,
           };
 
+          // Output tool call in JSON format if enabled
+          if (isJsonOutput) {
+            console.log(
+              JSON.stringify({
+                type: 'tool_call',
+                name: fc.name,
+                args: fc.args,
+                callId: callId,
+                timestamp: new Date().toISOString(),
+              }),
+            );
+          }
+
           const toolResponse = await executeToolCall(
             config,
             requestInfo,
@@ -113,12 +143,38 @@ export async function runNonInteractive(
             const isToolNotFound = toolResponse.error.message.includes(
               'not found in registry',
             );
-            console.error(
-              `Error executing tool ${fc.name}: ${toolResponse.resultDisplay || toolResponse.error.message}`,
-            );
+            if (isJsonOutput) {
+              console.log(
+                JSON.stringify({
+                  type: 'tool_response',
+                  name: fc.name,
+                  callId: callId,
+                  error: true,
+                  message:
+                    toolResponse.resultDisplay || toolResponse.error.message,
+                  timestamp: new Date().toISOString(),
+                }),
+              );
+            } else {
+              console.error(
+                `Error executing tool ${fc.name}: ${toolResponse.resultDisplay || toolResponse.error.message}`,
+              );
+            }
             if (!isToolNotFound) {
               process.exit(1);
             }
+          } else if (isJsonOutput) {
+            // Output tool response in JSON format
+            console.log(
+              JSON.stringify({
+                type: 'tool_response',
+                name: fc.name,
+                callId: callId,
+                success: true,
+                result: toolResponse.resultDisplay || '',
+                timestamp: new Date().toISOString(),
+              }),
+            );
           }
 
           if (toolResponse.responseParts) {
@@ -136,7 +192,9 @@ export async function runNonInteractive(
         }
         currentMessages = [{ role: 'user', parts: toolResponseParts }];
       } else {
-        process.stdout.write('\n'); // Ensure a final newline
+        if (!isJsonOutput) {
+          process.stdout.write('\n'); // Ensure a final newline
+        }
         return;
       }
     }
