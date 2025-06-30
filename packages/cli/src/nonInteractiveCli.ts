@@ -34,6 +34,7 @@ export async function runNonInteractive(
 
   const geminiClient = config.getGeminiClient();
   const toolRegistry: ToolRegistry = await config.getToolRegistry();
+  const isJsonOutput = config.getJsonOutput();
 
   const abortController = new AbortController();
   let currentMessages: Content[] = [{ role: 'user', parts: [{ text: input }] }];
@@ -58,6 +59,7 @@ export async function runNonInteractive(
         prompt_id,
       );
 
+      let responseText = '';
       for await (const event of responseStream) {
         if (abortController.signal.aborted) {
           console.error('Operation cancelled.');
@@ -65,7 +67,11 @@ export async function runNonInteractive(
         }
 
         if (event.type === GeminiEventType.Content) {
-          process.stdout.write(event.value);
+          if (isJsonOutput) {
+            responseText += event.value;
+          } else {
+            process.stdout.write(event.value);
+          }
         } else if (event.type === GeminiEventType.ToolCallRequest) {
           const toolCallRequest = event.value;
           const fc: FunctionCall = {
@@ -75,6 +81,17 @@ export async function runNonInteractive(
           };
           functionCalls.push(fc);
         }
+      }
+
+      // Output assistant response in JSON format if enabled
+      if (isJsonOutput && responseText) {
+        console.log(
+          JSON.stringify({
+            type: 'assistant',
+            content: responseText,
+            timestamp: new Date().toISOString(),
+          }),
+        );
       }
 
       if (functionCalls.length > 0) {
@@ -90,6 +107,19 @@ export async function runNonInteractive(
             prompt_id,
           };
 
+          // Output tool call in JSON format if enabled
+          if (isJsonOutput) {
+            console.log(
+              JSON.stringify({
+                type: 'tool_call',
+                name: fc.name,
+                args: fc.args,
+                callId: callId,
+                timestamp: new Date().toISOString(),
+              }),
+            );
+          }
+
           const toolResponse = await executeToolCall(
             config,
             requestInfo,
@@ -98,11 +128,38 @@ export async function runNonInteractive(
           );
 
           if (toolResponse.error) {
-            console.error(
-              `Error executing tool ${fc.name}: ${toolResponse.resultDisplay || toolResponse.error.message}`,
-            );
-            if (toolResponse.errorType === ToolErrorType.UNHANDLED_EXCEPTION)
+            if (isJsonOutput) {
+              console.log(
+                JSON.stringify({
+                  type: 'tool_response',
+                  name: fc.name,
+                  callId: callId,
+                  error: true,
+                  message:
+                    toolResponse.resultDisplay || toolResponse.error.message,
+                  timestamp: new Date().toISOString(),
+                }),
+              );
+            } else {
+              console.error(
+                `Error executing tool ${fc.name}: ${toolResponse.resultDisplay || toolResponse.error.message}`,
+              );
+            }
+            if (toolResponse.errorType === ToolErrorType.UNHANDLED_EXCEPTION) {
               process.exit(1);
+            }
+          } else if (isJsonOutput) {
+            // Output tool response in JSON format
+            console.log(
+              JSON.stringify({
+                type: 'tool_response',
+                name: fc.name,
+                callId: callId,
+                success: true,
+                result: toolResponse.resultDisplay || '',
+                timestamp: new Date().toISOString(),
+              }),
+            );
           }
 
           if (toolResponse.responseParts) {
@@ -120,7 +177,9 @@ export async function runNonInteractive(
         }
         currentMessages = [{ role: 'user', parts: toolResponseParts }];
       } else {
-        process.stdout.write('\n'); // Ensure a final newline
+        if (!isJsonOutput) {
+          process.stdout.write('\n'); // Ensure a final newline
+        }
         return;
       }
     }

@@ -188,6 +188,7 @@ export interface ConfigParameters {
   ideModeFeature?: boolean;
   ideMode?: boolean;
   ideClient: IdeClient;
+  jsonOutput?: boolean;
 }
 
 export class Config {
@@ -247,6 +248,7 @@ export class Config {
     | Record<string, SummarizeToolOutputSettings>
     | undefined;
   private readonly experimentalAcp: boolean = false;
+  private readonly jsonOutput: boolean;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -304,6 +306,7 @@ export class Config {
     this.ideModeFeature = params.ideModeFeature ?? false;
     this.ideMode = params.ideMode ?? true;
     this.ideClient = params.ideClient;
+    this.jsonOutput = params.jsonOutput ?? false;
 
     if (params.contextFileName) {
       setGeminiMdFilename(params.contextFileName);
@@ -651,6 +654,10 @@ export class Config {
       await this.gitService.initialize();
     }
     return this.gitService;
+  }
+
+  getJsonOutput(): boolean {
+    return this.jsonOutput;
   }
 
   async createToolRegistry(): Promise<ToolRegistry> {

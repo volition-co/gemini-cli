@@ -66,6 +66,7 @@ export interface CliArgs {
   ideModeFeature: boolean | undefined;
   proxy: string | undefined;
   includeDirectories: string[] | undefined;
+  json: boolean | undefined;
 }
 
 export async function parseArguments(): Promise<CliArgs> {
@@ -212,6 +213,11 @@ export async function parseArguments(): Promise<CliArgs> {
       coerce: (dirs: string[]) =>
         // Handle comma-separated values
         dirs.flatMap((dir) => dir.split(',').map((d) => d.trim())),
+    })
+    .option('json', {
+      type: 'boolean',
+      description: 'Output tool calls and responses in JSON format',
+      default: false,
     })
     .version(await getCliVersion()) // This will enable the --version flag based on package.json
     .alias('v', 'version')
@@ -456,6 +462,7 @@ export async function loadCliConfig(
     ideMode,
     ideModeFeature,
     ideClient,
+    jsonOutput: argv.json || false,
   });
 }
 
