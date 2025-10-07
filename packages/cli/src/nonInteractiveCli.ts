@@ -17,6 +17,7 @@ import {
   OutputFormat,
   JsonFormatter,
   uiTelemetryService,
+  Logger,
 } from '@google/gemini-cli-core';
 
 import type { Content, Part } from '@google/genai';
@@ -56,6 +57,47 @@ export async function runNonInteractive(
       const geminiClient = config.getGeminiClient();
 
       const abortController = new AbortController();
+      const chat = await geminiClient.getChat();
+      const logger = new Logger(config.getSessionId(), config.storage);
+      await logger.initialize();
+
+      const continueTag = config.getContinue();
+      if (continueTag) {
+        const conversation = await logger.loadCheckpoint(continueTag);
+
+        // Handle missing checkpoint
+        if (conversation.length === 0) {
+          const errorMsg = `No conversation found with tag: ${continueTag}`;
+          if (config.getOutputFormat() === OutputFormat.JSON) {
+            const output = {
+              type: 'error',
+              message: errorMsg,
+              timestamp: new Date().toISOString(),
+            };
+            process.stdout.write(JSON.stringify(output));
+            process.stdout.write('\n');
+          } else {
+            console.error(errorMsg);
+          }
+          process.exit(1);
+        }
+
+        chat.clearHistory();
+
+        for (const item of conversation) {
+          chat.addHistory(item);
+        }
+
+        if (config.getOutputFormat() === OutputFormat.JSON) {
+          const output = {
+            type: 'checkpoint_loaded',
+            tag: continueTag,
+            timestamp: new Date().toISOString(),
+          };
+          process.stdout.write(JSON.stringify(output));
+          process.stdout.write('\n');
+        }
+      }
 
       let query: Part[] | undefined;
 
@@ -127,6 +169,17 @@ export async function runNonInteractive(
             }
           } else if (event.type === GeminiEventType.ToolCallRequest) {
             toolCallRequests.push(event.value);
+            if (config.getOutputFormat() === OutputFormat.JSON) {
+              const output = {
+                type: 'tool_call',
+                name: event.value.name,
+                args: event.value.args,
+                callId: event.value.callId,
+                timestamp: new Date().toISOString(),
+              };
+              process.stdout.write(JSON.stringify(output));
+              process.stdout.write('\n');
+            }
           }
         }
 
@@ -149,10 +202,34 @@ export async function runNonInteractive(
                   ? toolResponse.resultDisplay
                   : undefined,
               );
+              if (config.getOutputFormat() === OutputFormat.JSON) {
+                const output = {
+                  type: 'tool_response',
+                  name: requestInfo.name,
+                  callId: requestInfo.callId,
+                  error: true,
+                  message:
+                    toolResponse.resultDisplay || toolResponse.error.message,
+                  timestamp: new Date().toISOString(),
+                };
+                process.stdout.write(JSON.stringify(output));
+                process.stdout.write('\n');
+              }
             }
 
             if (toolResponse.responseParts) {
               toolResponseParts.push(...toolResponse.responseParts);
+              if (config.getOutputFormat() === OutputFormat.JSON) {
+                const output = {
+                  type: 'tool_response',
+                  callId: toolResponse.callId,
+                  success: true,
+                  result: toolResponse.resultDisplay || '',
+                  timestamp: new Date().toISOString(),
+                };
+                process.stdout.write(JSON.stringify(output));
+                process.stdout.write('\n');
+              }
             }
           }
           currentMessages = [{ role: 'user', parts: toolResponseParts }];
@@ -161,9 +238,12 @@ export async function runNonInteractive(
             const formatter = new JsonFormatter();
             const stats = uiTelemetryService.getMetrics();
             process.stdout.write(formatter.format(responseText, stats));
+            process.stdout.write('\n');
           } else {
             process.stdout.write('\n'); // Ensure a final newline
           }
+
+          await saveCheckpoint(chat, logger, config.getOutputFormat());
           return;
         }
       }
@@ -176,4 +256,31 @@ export async function runNonInteractive(
       }
     }
   });
+}
+
+async function saveCheckpoint(
+  chat: { getHistory: () => Content[] },
+  logger: Logger,
+  outputFormat: OutputFormat,
+): Promise<void> {
+  try {
+    const history = chat.getHistory();
+    if (history.length > 0) {
+      const continueTag = `auto-${Date.now()}`;
+      await logger.saveCheckpoint(history, continueTag);
+      if (outputFormat === OutputFormat.JSON) {
+        const output = {
+          type: 'checkpoint',
+          tag: continueTag,
+          timestamp: new Date().toISOString(),
+        };
+        process.stdout.write(JSON.stringify(output));
+        process.stdout.write('\n');
+      }
+    }
+  } catch (error) {
+    if (outputFormat !== OutputFormat.JSON) {
+      console.error('Failed to save checkpoint: ', error);
+    }
+  }
 }

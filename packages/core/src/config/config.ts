@@ -260,6 +260,7 @@ export interface ConfigParameters {
   useModelRouter?: boolean;
   enableMessageBusIntegration?: boolean;
   enableSubagents?: boolean;
+  continue?: string;
 }
 
 export class Config {
@@ -353,6 +354,7 @@ export class Config {
   private readonly useModelRouter: boolean;
   private readonly enableMessageBusIntegration: boolean;
   private readonly enableSubagents: boolean;
+  private readonly continue: string | undefined;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -453,6 +455,8 @@ export class Config {
     this.outputSettings = {
       format: params.output?.format ?? OutputFormat.TEXT,
     };
+
+    this.continue = params.continue;
 
     if (params.contextFileName) {
       setGeminiMdFilename(params.contextFileName);
@@ -992,6 +996,10 @@ export class Config {
     return this.outputSettings?.format
       ? this.outputSettings.format
       : OutputFormat.TEXT;
+  }
+
+  getContinue(): string | undefined {
+    return this.continue;
   }
 
   getUseModelRouter(): boolean {
