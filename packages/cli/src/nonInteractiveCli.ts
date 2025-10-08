@@ -18,6 +18,7 @@ import {
   JsonFormatter,
   uiTelemetryService,
   Logger,
+  calculateModelCost,
 } from '@google/gemini-cli-core';
 
 import type { Content, Part } from '@google/genai';
@@ -237,6 +238,21 @@ export async function runNonInteractive(
           if (config.getOutputFormat() === OutputFormat.JSON) {
             const formatter = new JsonFormatter();
             const stats = uiTelemetryService.getMetrics();
+
+            for (const [modelName, modelMetrics] of Object.entries(
+              stats.models,
+            )) {
+              const cost = calculateModelCost(
+                modelName,
+                modelMetrics.tokens.prompt,
+                modelMetrics.tokens.candidates + modelMetrics.tokens.thoughts,
+                modelMetrics.tokens.cached,
+              );
+              if (cost !== undefined) {
+                modelMetrics.cost += cost;
+              }
+            }
+
             process.stdout.write(formatter.format(responseText, stats));
             process.stdout.write('\n');
           } else {
