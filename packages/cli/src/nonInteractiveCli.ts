@@ -18,6 +18,7 @@ import {
   JsonFormatter,
   uiTelemetryService,
   Logger,
+  calculateModelCost,
 } from '@google/gemini-cli-core';
 
 import type { Content, Part } from '@google/genai';
@@ -241,6 +242,37 @@ export async function runNonInteractive(
             process.stdout.write('\n');
           } else {
             process.stdout.write('\n'); // Ensure a final newline
+
+            // Calculate and display total cost
+            const stats = uiTelemetryService.getMetrics();
+            let totalCost = 0;
+            let hasPricingData = false;
+
+            for (const [modelName, modelMetrics] of Object.entries(
+              stats.models,
+            )) {
+              const cost = calculateModelCost(
+                modelName,
+                modelMetrics.tokens.prompt,
+                modelMetrics.tokens.candidates,
+                modelMetrics.tokens.cached,
+              );
+              if (cost !== undefined) {
+                totalCost += cost;
+                hasPricingData = true;
+              }
+            }
+
+            if (hasPricingData) {
+              process.stderr.write(
+                `\nEstimated cost: $${totalCost.toFixed(6)}\n`,
+              );
+              if (totalCost < 0.01) {
+                process.stderr.write(
+                  '(Note: Actual costs may vary based on your pricing tier and authentication method)\n',
+                );
+              }
+            }
           }
 
           await saveCheckpoint(chat, logger, config.getOutputFormat());
