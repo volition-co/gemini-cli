@@ -50,6 +50,7 @@ export interface ModelMetrics {
     thoughts: number;
     tool: number;
   };
+  cost: number;
 }
 
 export interface SessionMetrics {
@@ -87,6 +88,7 @@ const createInitialModelMetrics = (): ModelMetrics => ({
     thoughts: 0,
     tool: 0,
   },
+  cost: 0,
 });
 
 const createInitialMetrics = (): SessionMetrics => ({

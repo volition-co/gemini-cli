@@ -33,98 +33,22 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   // Gemini 2.5 Pro pricing (128k context, pay-as-you-go)
   'gemini-2.5-pro': {
     inputTokenPrice: 1.25,
-    outputTokenPrice: 5.0,
-    cachedInputTokenPrice: 0.3125,
-  },
-  'gemini-2.5-pro-001': {
-    inputTokenPrice: 1.25,
-    outputTokenPrice: 5.0,
-    cachedInputTokenPrice: 0.3125,
-  },
-  'gemini-2.5-pro-002': {
-    inputTokenPrice: 1.25,
-    outputTokenPrice: 5.0,
-    cachedInputTokenPrice: 0.3125,
+    outputTokenPrice: 10.0,
+    cachedInputTokenPrice: 0.31,
   },
 
   // Gemini 2.5 Flash pricing
   'gemini-2.5-flash': {
-    inputTokenPrice: 0.075,
-    outputTokenPrice: 0.3,
-    cachedInputTokenPrice: 0.01875,
-  },
-  'gemini-2.5-flash-001': {
-    inputTokenPrice: 0.075,
-    outputTokenPrice: 0.3,
-    cachedInputTokenPrice: 0.01875,
-  },
-  'gemini-2.5-flash-002': {
-    inputTokenPrice: 0.075,
-    outputTokenPrice: 0.3,
-    cachedInputTokenPrice: 0.01875,
+    inputTokenPrice: 0.3,
+    outputTokenPrice: 2.5,
+    cachedInputTokenPrice: 0.075,
   },
 
   // Gemini 2.5 Flash Lite pricing
   'gemini-2.5-flash-lite': {
-    inputTokenPrice: 0.015,
-    outputTokenPrice: 0.06,
-    cachedInputTokenPrice: 0.00375,
-  },
-  'gemini-2.5-flash-lite-001': {
-    inputTokenPrice: 0.015,
-    outputTokenPrice: 0.06,
-    cachedInputTokenPrice: 0.00375,
-  },
-
-  // Gemini 2.0 Flash pricing (for backwards compatibility)
-  'gemini-2.0-flash': {
-    inputTokenPrice: 0.075,
-    outputTokenPrice: 0.3,
-    cachedInputTokenPrice: 0.01875,
-  },
-  'gemini-2.0-flash-exp': {
-    inputTokenPrice: 0.075,
-    outputTokenPrice: 0.3,
-    cachedInputTokenPrice: 0.01875,
-  },
-
-  // Gemini 1.5 Pro pricing (for backwards compatibility)
-  'gemini-1.5-pro': {
-    inputTokenPrice: 1.25,
-    outputTokenPrice: 5.0,
-    cachedInputTokenPrice: 0.3125,
-  },
-  'gemini-1.5-pro-001': {
-    inputTokenPrice: 1.25,
-    outputTokenPrice: 5.0,
-    cachedInputTokenPrice: 0.3125,
-  },
-  'gemini-1.5-pro-002': {
-    inputTokenPrice: 1.25,
-    outputTokenPrice: 5.0,
-    cachedInputTokenPrice: 0.3125,
-  },
-
-  // Gemini 1.5 Flash pricing (for backwards compatibility)
-  'gemini-1.5-flash': {
-    inputTokenPrice: 0.075,
-    outputTokenPrice: 0.3,
-    cachedInputTokenPrice: 0.01875,
-  },
-  'gemini-1.5-flash-001': {
-    inputTokenPrice: 0.075,
-    outputTokenPrice: 0.3,
-    cachedInputTokenPrice: 0.01875,
-  },
-  'gemini-1.5-flash-002': {
-    inputTokenPrice: 0.075,
-    outputTokenPrice: 0.3,
-    cachedInputTokenPrice: 0.01875,
-  },
-  'gemini-1.5-flash-8b': {
-    inputTokenPrice: 0.0375,
-    outputTokenPrice: 0.15,
-    cachedInputTokenPrice: 0.009375,
+    inputTokenPrice: 0.1,
+    outputTokenPrice: 0.4,
+    cachedInputTokenPrice: 0.025,
   },
 };
 
