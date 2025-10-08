@@ -24,7 +24,7 @@ export class JsonFormatter {
       output.error = error;
     }
 
-    return JSON.stringify(output, null, 2);
+    return JSON.stringify(output);
   }
 
   formatError(error: Error, code?: string | number): string {
