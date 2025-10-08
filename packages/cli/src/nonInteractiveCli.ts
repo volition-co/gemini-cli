@@ -15,7 +15,6 @@ import {
   FatalInputError,
   promptIdContext,
   OutputFormat,
-  JsonFormatter,
   uiTelemetryService,
   Logger,
   calculateModelCost,
@@ -236,7 +235,6 @@ export async function runNonInteractive(
           currentMessages = [{ role: 'user', parts: toolResponseParts }];
         } else {
           if (config.getOutputFormat() === OutputFormat.JSON) {
-            const formatter = new JsonFormatter();
             const stats = uiTelemetryService.getMetrics();
 
             for (const [modelName, modelMetrics] of Object.entries(
@@ -253,7 +251,13 @@ export async function runNonInteractive(
               }
             }
 
-            process.stdout.write(formatter.format(responseText, stats));
+            const output = {
+              type: 'assistant',
+              content: responseText,
+              stats,
+            };
+
+            process.stdout.write(JSON.stringify(output));
             process.stdout.write('\n');
           } else {
             process.stdout.write('\n'); // Ensure a final newline
